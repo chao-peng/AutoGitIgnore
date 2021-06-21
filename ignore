@@ -1,0 +1,116 @@
+#!/usr/bin/env python3
+
+import requests
+import os
+import zipfile
+import glob
+import sys
+
+
+usageInfo = """Usage:
+List all supported languages/IDEs:
+ignore -l
+
+Generate .gitignore file by specifying languages/IDE:
+ignore language1 [language2 language3 ...]
+
+For example, if you are working in C and Python using VSCode on a Mac, you can do:
+ignore c python visualstudiocode macos
+
+Note: the options are case-insensitive"""
+
+
+def getIgnoreFiles():
+    if not os.path.exists("gitignore"):
+        print(".gitignore files not exist. Downloading from Github.")
+        r = requests.get(
+            "https://github.com/github/gitignore/archive/refs/heads/master.zip",
+            allow_redirects=True)
+        open("gitignore.zip", "wb").write(r.content)
+        print("Download completed.")
+        zipfile.ZipFile("gitignore.zip", 'r').extractall("gitignore")
+        os.remove("gitignore.zip")
+    ignoreFiles = glob.glob("gitignore/gitignore-master/*.gitignore")
+    ignoreFiles += glob.glob("gitignore/gitignore-master/Global/*.gitignore")
+    ignoreFiles += glob.glob("gitignore/gitignore-master/community/*.gitignore")
+    ignoreFiles.sort()
+    pairs = {}
+    for ignoreFile in ignoreFiles:
+        name = ignoreFile[ignoreFile.rfind("/") + 1: ignoreFile.rfind(".gitignore")]
+        if name not in pairs:
+            pairs[name.lower()] = ignoreFile
+
+    return pairs
+
+
+def processIgnoreFile(filename):
+    ignoreRules = {}
+    with open(filename, "r") as ignoreFile:
+        lines = ignoreFile.readlines()
+        comment = ""
+        lastIsComment = False
+        for line in lines:
+            if line.strip() == "":
+                continue
+            if lastIsComment and line.strip()[0] == "#":
+                comment += line
+                lastIsComment = True
+            elif not lastIsComment and line.strip()[0] == '#':
+                comment = line
+                lastIsComment = True
+            elif lastIsComment and line.strip()[0] != '#':
+                ignoreRules[comment] = [line]
+                lastIsComment = False
+            elif not lastIsComment and line.strip()[0] != '#':
+                if comment == "":
+                    comment = "# Uncommented\n"
+                    ignoreRules[comment] = []
+                ignoreRules[comment].append(line)
+                lastIsComment = False
+
+    return ignoreRules
+
+
+def buildIgnoreFile(enabledFiles):
+    allRules = {}
+    allIgnoredFiles = []
+    for enabledFile in enabledFiles:
+        currentRules = processIgnoreFile(enabledFile)
+        for rule in currentRules:
+            if rule not in allRules:
+                allRules[rule] = []
+            for ignoredFile in currentRules[rule]:
+                if ignoredFile not in allRules[rule] and ignoredFile not in allIgnoredFiles:
+                    allRules[rule].append(ignoredFile)
+                    allIgnoredFiles.append(ignoredFile)
+    return allRules
+
+
+def main():
+    if len(sys.argv) < 2:
+        print("Invalid command line options.\n\n" + usageInfo)
+        exit(-1)
+    ignoreFiles = getIgnoreFiles()
+    if sys.argv[1] == '-l':
+        for ignoreFile in ignoreFiles:
+            print(ignoreFile)
+        exit(0)
+    selectedOptions = sys.argv[1:]
+    enabledFiles = []
+    for option in selectedOptions:
+        if option.lower() in ignoreFiles:
+            enabledFiles.append(ignoreFiles[option.lower()])
+        else:
+            print("Warning: {} is not available".format(option.lower()))
+    rules = buildIgnoreFile(enabledFiles)
+    with open("generated.gitignore", "w") as outputFile:
+        for rule in rules:
+            if len(rules[rule]) > 0:
+                outputFile.write(rule)
+                for ignoredFiles in rules[rule]:
+                    outputFile.write(ignoredFiles)
+                outputFile.write("\n")
+
+
+if __name__ == "__main__":
+    main()

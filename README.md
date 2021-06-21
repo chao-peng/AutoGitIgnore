@@ -4,6 +4,8 @@ Automatically generate .gitignore for your repository.
 # Usage
 List all supported languages/IDEs:
 
+## Commands
+
 ```bash
 ignore -l
 ```
@@ -21,4 +23,6 @@ ignore c python visualstudiocode macos
 ```
 Note: the options are case-insensitive
 
-**Generated file will be named generated.gitignore. You can put it in your project repository and rename it to .gitignore**
+## Output
+
+Generated file will be named **generated.gitignore**. You can put it in your project repository and rename it to **.gitignore**

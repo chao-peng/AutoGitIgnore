@@ -21,4 +21,4 @@ ignore c python visualstudiocode macos
 ```
 Note: the options are case-insensitive
 
-*Generated file will be named generated.gitignore. You can put it in your project repository and rename it to .gitignore*
+**Generated file will be named generated.gitignore. You can put it in your project repository and rename it to .gitignore**
